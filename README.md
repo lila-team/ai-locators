@@ -1,5 +1,13 @@
 # AI Selectors for Playwright
 
+By [<img src="assets/logo.png" height=30>](https://github.com/lila-team/lila)
+
+[![NPM Version](https://img.shields.io/npm/v/ai-locators?color=blue)](https://www.npmjs.com/package/ai-locators)
+[![PyPI - Version](https://img.shields.io/pypi/v/ai-locators?color=blue)](https://pypi.org/project/ai-locators/)
+[![CI](https://github.com/lila-team/ai-locators/actions/workflows/test.yml/badge.svg)](https://github.com/lila-team/ai-locators/actions/workflows/test.yml)[![Twitter](https://img.shields.io/twitter/follow/lila__dev?style=social)](https://twitter.com/lila__dev)
+[![Discord](https://img.shields.io/discord/1303067047931936809?label=Discord)](https://discord.gg/kZ7TEmxH)
+![GitHub Repo stars](https://img.shields.io/github/stars/lila-team/ai-locators)
+
 AI-powered selectors for Playwright, available for both Python and Node.js. These packages allow you to use natural language descriptions to locate elements on a webpage using LLM (Large Language Model) technology.
 
 ```javascript
