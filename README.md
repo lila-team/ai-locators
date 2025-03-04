@@ -20,7 +20,7 @@ page.locator("ai=the login button in the header that says Sign In");
 
 Why?
 
-* `ai-locators` do not require maintanance
+* `ai-locators` do not require maintenance
 * native integration with Playwright
 
 ## Node.js Package
