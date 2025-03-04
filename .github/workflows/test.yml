@@ -1,0 +1,88 @@
+name: Test Packages
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - group: haiku
+            llm_model: claude-3-5-haiku-latest
+            llm_base_url: https://api.anthropic.com/v1/
+            llm_api_key: ANTHROPIC_API_KEY
+          - group: sonnet
+            llm_model: claude-3-5-sonnet-latest
+            llm_base_url: https://api.anthropic.com/v1/
+            llm_api_key: ANTHROPIC_API_KEY
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        working-directory: python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Install Playwright
+        run: |
+          playwright install chromium
+
+      - name: Run Python tests
+        working-directory: python
+        env:
+          LLM_MODEL: ${{ matrix.llm_model }}
+          LLM_BASE_URL: ${{ matrix.llm_base_url }}
+          LLM_API_KEY: ${{ secrets[matrix.llm_api_key] }}
+        run: |
+          pytest -v
+
+  test-node:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - group: haiku
+            llm_model: claude-3-5-haiku-latest
+            llm_base_url: https://api.anthropic.com/v1/
+            llm_api_key: ANTHROPIC_API_KEY
+          - group: sonnet
+            llm_model: claude-3-5-sonnet-latest
+            llm_base_url: https://api.anthropic.com/v1/
+            llm_api_key: ANTHROPIC_API_KEY
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node.js dependencies
+        working-directory: node
+        run: |
+          npm install
+    
+      - name: Set up Playwright
+        working-directory: node
+        run: |
+          npx playwright install chromium
+
+      - name: Run Node.js tests
+        working-directory: node
+        env:
+          LLM_MODEL: ${{ matrix.llm_model }}
+          LLM_BASE_URL: ${{ matrix.llm_base_url }}
+          LLM_API_KEY: ${{ secrets[matrix.llm_api_key] }}
+        run: |
+          npx playwright test 

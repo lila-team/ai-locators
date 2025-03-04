@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-locators"
+version = "0.1.0"
+description = "AI-powered locators for Playwright"
+readme = "../README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Surfing Devs", email = "surfing.devs@gmail.com" },
+    { name = "Lila", email = "info@lila.dev" }
+]
+dependencies = [
+    "playwright~=1.40",
+    "openai~=1.0",
+    "loguru~=0.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-playwright~=0.7",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ai_locators"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "ai_locators/**/*.py",
+    "assets/**/*.js",
+] 
