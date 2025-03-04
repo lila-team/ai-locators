@@ -1,4 +1,4 @@
-# AI Selectors for Playwright
+# AI Locators for Playwright
 
 By [<img src="assets/logo.png" height=30>](https://github.com/lila-team/lila)
 
