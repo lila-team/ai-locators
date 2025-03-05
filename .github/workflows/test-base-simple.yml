@@ -43,4 +43,4 @@ jobs:
           LLM_BASE_URL: ${{ inputs.llm_base_url }}
           LLM_API_KEY: ${{ secrets[inputs.llm_api_key_name] }}
         run: |
-          pytest -v tests/test_selectors.py
+          pytest -v tests/test_selector.py
