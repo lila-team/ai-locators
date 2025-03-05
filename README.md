@@ -23,6 +23,19 @@ Why?
 * `ai-locators` do not require maintenance
 * native integration with Playwright
 
+## Supported Models and Test Badges
+
+| Model Name | Test Badge |
+|------------|------------|
+| Haiku 3.5 | ![Haiku 3.5](https://github.com/lila-team/ai-locators/actions/workflows/test-haiku.yml/badge.svg) |
+| Sonnet 3.5 | ![Sonnet 3.5](https://github.com/lila-team/ai-locators/actions/workflows/test-sonnet.yml/badge.svg) |
+| GPT-4o | ![GPT-4o](https://github.com/lila-team/ai-locators/actions/workflows/test-gpt-4o.yml/badge.svg) |
+| GPT-4o Mini | ![GPT-4o Mini](https://github.com/lila-team/ai-locators/actions/workflows/test-gpt-4o-mini.yml/badge.svg) |
+| Qwen Plus | ![Qwen Plus](https://github.com/lila-team/ai-locators/actions/workflows/test-qwen-plus.yml/badge.svg) |
+| Qwen Turbo | ![Qwen Turbo](https://github.com/lila-team/ai-locators/actions/workflows/test-qwen-turbo.yml/badge.svg) |
+| Google Gemini 2.0 Flash 001 | ![Google Gemini 2.0 Flash 001](https://github.com/lila-team/ai-locators/actions/workflows/test-gemini-flash.yml/badge.svg) |
+| Meta LLaMA 3.3 70B Instruct | ![Meta LLaMA 3.3 70B Instruct](https://github.com/lila-team/ai-locators/actions/workflows/test-llama-instruct.yml/badge.svg) |
+
 ## Node.js Package
 
 ### Installation

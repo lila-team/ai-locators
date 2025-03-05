@@ -1,0 +1,16 @@
+name: Google Gemini 2.0 Flash 001
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-smokes:
+    uses: ./.github/workflows/test-base-python-smokes.yml
+    with:
+      llm_model: google/gemini-2.0-flash-001
+      llm_base_url: https://openrouter.ai/api/v1
+      llm_api_key_name: OPENROUTER_API_KEY
+    secrets: inherit 
