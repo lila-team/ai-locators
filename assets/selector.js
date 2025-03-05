@@ -90,8 +90,7 @@
         return [{
             role: 'user',
             content: `
-            You are a selector generation assistant. Given the webpage content and a high level description, you need to locate the
-            element or elements that match the description and generate a CSS selector.
+            You are an assistant that generates CSS selectors based on an HTML and a description of an element or elements.
 
             The description could be about a specific element or a group of elements. For example:
             * "The main heading of the page"  # This is a specific element
@@ -99,19 +98,23 @@
             * "The product images"  # This is a group of elements
             * "The navigation links"  # This is a group of elements
 
-            Your instructions are to:
-            1) Locate the element or elements that match the description
-            2) Generate the most specific CSS selector for the element or elements.
+            You need to locate the element or elements and generate the most specific CSS selector for them.
 
-            For the CSS selector, follow these guidelines:
-            * Be specific. The selector should match only the element or elements that match the description.
-            * Do not go higher in the DOM tree than necessary.
-            * Prioritize content elements over layout elements if possible.
+            If the description is about a specific element, follow this guide:
+            1) If the element has an id attribute, use it as the selector. This is the most specific selector.
+            2) If the element has a class attribute instead, and it is unique, use it as the selector.
+            3) If the element has a clear role instead, use that.
+            3) If the element has unique data attribute instead, use that.
+            4) If previous steps do not apply, use the element's tag name and its parent's tag name to create a selector. Use nth-child or nth-of-type to make the selector more specific.
+            5) If you still cannot generate the selector, output 'NULL'.
+
+            If the description is about a group of elements, follow this guide:
+            1) If all elements share a unique class attribute, use it as the selector.
+            2) If the elements share a common parent, use a parent's selector and the children's tag name to create a selector.
+            3) If there is no way to group the elements, output 'NULL'.
+            
             * The selector MUST NOT use the following CSS selectors: :has, :has-text, :text, :visible, :is or any non native CSS selector.
                 * Instead, use nth-child, nth-of-type, first-child, last-child, etc. to locate elements by index
-
-            The selector will be used to "query()" or "queryAll()" on the root element of the page to locate the element or elements,
-            so make sure the selector is valid.
 
             <OUTPUT>
             You should output the selector or 'NULL' if no selector is found.
@@ -125,7 +128,10 @@
             Description: ${description}
             
             Page content:
+            <PAGE>
             ${content}
+            </PAGE>
+
             </INPUT>`
         },{
             role: 'assistant',
