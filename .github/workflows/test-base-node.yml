@@ -11,7 +11,7 @@ on:
       llm_base_url:
         required: true
         type: string
-      llm_api_key_name:
+      llm_api_key:
         required: true
         type: string
 
@@ -41,6 +41,6 @@ jobs:
         env:
           LLM_MODEL: ${{ inputs.llm_model }}
           LLM_BASE_URL: ${{ inputs.llm_base_url }}
-          LLM_API_KEY: ${{ secrets[inputs.llm_api_key_name] }}
+          LLM_API_KEY: ${{ inputs.llm_api_key }}
         run: |
           npx playwright test 
