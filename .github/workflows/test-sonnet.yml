@@ -1,4 +1,4 @@
-name: Haiku 3.5
+name: Sonnet 3.5
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
   test-smokes:
     uses: ./.github/workflows/test-base-python-smokes.yml
     with:
-      llm_model: claude-3-5-haiku-latest
+      llm_model: claude-3-5-sonnet-latest
       llm_base_url: https://api.anthropic.com/v1/
       llm_api_key_name: ANTHROPIC_API_KEY
-    secrets: inherit
+    secrets: inherit 
