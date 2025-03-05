@@ -5,6 +5,12 @@
     LLM_API_URL: '<PLACEHOLDER>',
     LLM_MODEL: '<PLACEHOLDER>',
     LLM_API_KEY: '<PLACEHOLDER>',  // Will be replaced at runtime
+    
+    // Store failed suggestions per root+description combination
+    _failedSuggestions: {},
+
+    // Store successful suggestions per root+description combination
+    _successfulSuggestions: {},
 
     _cleanup(root) {
         console.log("Filtering non-relevant elements");
@@ -85,12 +91,48 @@
         return clonedRoot;
     },
 
+    // Helper function to get a unique key for root+description combination
+    _getKey(content, description) {
+        return `${content}:::${description}`;
+    },
+
+    // Helper function to record a failed suggestion
+    _recordFailedSuggestion(content, description, selector) {
+        const key = this._getKey(content, description);
+        if (!this._failedSuggestions[key]) {
+            this._failedSuggestions[key] = new Set();
+        }
+        this._failedSuggestions[key].add(selector);
+    },
+
+    // Helper function to record a successful suggestion
+    _recordSuccessfulSuggestion(content, description, selector) {
+        const key = this._getKey(content, description);
+        if (!this._successfulSuggestions[key]) {
+            this._successfulSuggestions[key] = new Set();
+        }
+        this._successfulSuggestions[key].add(selector);
+    },
+
+    // Helper function to get failed suggestions
+    _getFailedSuggestions(content, description) {
+        const key = this._getKey(content, description);
+        return Array.from(this._failedSuggestions[key] || []);
+    },
+
+    _getSuccessfulSuggestions(content, description) {
+        const key = this._getKey(content, description);
+        return Array.from(this._successfulSuggestions[key] || []);
+    },
+
     // Helper function to generate messages for the LLM
     _getMessages(description, content) {
-        return [{
+        const failedSuggestions = this._getFailedSuggestions(content, description);
+        
+        const messages = [{
             role: 'user',
             content: `
-            You are an assistant that generates CSS selectors based on an HTML and a description of an element or elements.
+            You are an assistant that generates a single CSS selector based on an HTML and a description:
 
             The description could be about a specific element or a group of elements. For example:
             * "The main heading of the page"  # This is a specific element
@@ -98,23 +140,81 @@
             * "The product images"  # This is a group of elements
             * "The navigation links"  # This is a group of elements
 
-            You need to locate the element or elements and generate the most specific CSS selector for them.
+            To generate the CSS selector, apply the following rules depending on the the description:
 
-            If the description is about a specific element, follow this guide:
-            1) If the element has an id attribute, use it as the selector. This is the most specific selector.
-            2) If the element has a class attribute instead, and it is unique, use it as the selector.
-            3) If the element has a clear role instead, use that.
-            3) If the element has unique data attribute instead, use that.
-            4) If previous steps do not apply, use the element's tag name and its parent's tag name to create a selector. Use nth-child or nth-of-type to make the selector more specific.
-            5) If you still cannot generate the selector, output 'NULL'.
+            * For input elements, follow these rules:
+                1) If the element has an id attribute, return it as the selector. This is the most specific selector.
+                   For example: '#username-input'
+                2) If not, look for a unique name attribute and return it.
+                   For example: 'input[name="username"]'
+                3) If not, check if the element has a unique placeholder attribute and return it.
+                   For example: 'input[placeholder="Enter your username"]'
+                4) If not, check if a unique data attribute, return it.
+                   For example: 'input[data-qa="username"]'
+                5) If not, check if a unique aria-* attribute, return it.
+                   For example: 'input[aria-label="Username"]'
+                6) If not, check if there is a unique class attribute and return it.
+                   For example: '.username-input'
+                7) If not, check if there is a unique role attribute and return it.
+                   For example: '[role="textbox"]'
+                8) Lastly fallback to the tag name and its parent's tag name to create a selector.
+                   Use nth-child or nth-of-type to make the selector more specific.
+                   For example: 'form input:nth-of-type(1)'
+                9) If you still cannot generate the selector, output 'NULL'.
 
-            If the description is about a group of elements, follow this guide:
-            1) If all elements share a unique class attribute, use it as the selector.
-            2) If the elements share a common parent, use a parent's selector and the children's tag name to create a selector.
-            3) If there is no way to group the elements, output 'NULL'.
-            
-            * The selector MUST NOT use the following CSS selectors: :has, :has-text, :text, :visible, :is or any non native CSS selector.
-                * Instead, use nth-child, nth-of-type, first-child, last-child, etc. to locate elements by index
+            * For interactive elements (such as buttons, links, etc), follow these rules:
+                1) If the element has an id attribute, return it as the selector. This is the most specific selector.
+                   For example: '#submit-button'
+                2) If the element has a unique data attribute, return it.
+                   For example: '[data-qa="submit-button"]'
+                3) If the element has a unique aria-* attribute, return it.
+                   For example: '[aria-label="Submit"]'
+                4) If the element class can be used to identify it, return it.
+                   For example: '.submit-button' or 'div .submit-button'
+                5) If the element has a unique role attribute, return it.
+                   For example: '[role="button"]'
+                6) If the element has a unique text content, return it.
+                   For example: 'button:contains("Submit")'
+                7) Lastly fallback to the tag name and its parent's tag name to create a selector.
+                   Use nth-child or nth-of-type to make the selector more specific.
+                   For example: 'form button:nth-of-type(1)'
+                8) If you still cannot generate the selector, output 'NULL'.
+
+            * For content elements (headings, paragraphs, etc), follow these rules:
+                1) If the element has an id attribute, return it as the selector. This is the most specific selector.
+                   For example: '#main-heading'
+                2) If the element has a unique data attribute, return it.
+                   For example: '[data-qa="main-heading"]'
+                3) If the element has a unique aria-* attribute, return it.
+                   For example: '[aria-label="Main Heading"]'
+                4) If the element has a unique class attribute, return it.
+                   For example: '.main-heading'
+                5) If the element has a unique role attribute, return it.
+                   For example: '[role="heading"]'
+                6) If the element has a unique text content, return it.
+                   For example: 'h1:contains("Main Heading")'
+                7) Lastly fallback to the tag name and its parent's tag name to create a selector.
+                   For example: 'section h1:nth-of-type(1)'
+                8) If you still cannot generate the selector, output 'NULL'.
+
+             * For descriptions that are meant to aggregate multiple elements, follow these rules:
+                1) If the elements have a unique class attribute, return it.
+                   For example: '.product-image'
+                2) If the elements have a unique data attribute, return it.
+                   For example: '[data-qa="product-image"]'
+                3) If the elements have a unique aria-* attribute, return it.
+                   For example: '[aria-label="Product Image"]'
+                4) If the elements have a unique role attribute, return it.
+                   For example: '[role="img"]'
+                5) Lastly fallback to the tag name of the elements and the parent's selector to create a selector.
+                   For example: '#product-list img'
+                6) If you still cannot generate the selector, output 'NULL'.
+
+            In any case:
+            * Do not invent new attributes or classes.
+            * If the selector is not unique, use nth-child or nth-of-type to make it more specific.
+            * Do not prepend tags or parent selectors to the selector if they are not necessary.
+                * If 'name' is unique, use 'input[name="username"]' instead of '.main form input[name="username"]'.
 
             <OUTPUT>
             You should output the selector or 'NULL' if no selector is found.
@@ -133,14 +233,45 @@
             </PAGE>
 
             </INPUT>`
-        },{
+        }];
+
+        // Add failed suggestions as separate messages in the conversation
+        if (failedSuggestions.length > 0) {
+            messages.push({
+                role: 'assistant',
+                content: failedSuggestions[0]
+            });
+            messages.push({
+                role: 'user',
+                content: 'That selector did not work. Please try a different approach.'
+            });
+            
+            // Add remaining failed suggestions as alternating assistant/user messages
+            for (let i = 1; i < failedSuggestions.length; i++) {
+                messages.push({
+                    role: 'assistant',
+                    content: failedSuggestions[i]
+                });
+                messages.push({
+                    role: 'user',
+                    content: 'That selector also did not work. Please try a different approach.'
+                });
+            }
+            console.log('Failed suggestions:', failedSuggestions);
+        }
+
+        // Add the final assistant message
+        messages.push({
             role: 'assistant',
             content: 'The generated selector is:'
-        }];
+        });
+
+        return messages;
     },
 
     // Helper function to make sync HTTP request to LLM
     _llm(messages) {
+        // Check if we have any successful suggestions first
         const xhr = new XMLHttpRequest();
         xhr.open('POST', this.LLM_API_URL, false);  // false makes it synchronous
         xhr.setRequestHeader('Content-Type', 'application/json');
@@ -158,7 +289,7 @@
             if (xhr.status === 200) {
                 const response = JSON.parse(xhr.responseText);
                 const llm_selector = response.choices[0].message.content.trim();
-                if (!llm_selector) {
+                if (!llm_selector || llm_selector === 'NULL') {
                     console.error('No selector generated:', response);
                     return null;
                 }
@@ -184,12 +315,19 @@
             // Get the root content instead of entire DOM
             const elem = root.documentElement ? root.documentElement.querySelector('body') : root;
             const content = this._cleanup(elem).getHTML();
+
+            // Check if we have any successful suggestions first
+            const successfulSuggestions = this._getSuccessfulSuggestions(content, selector);
+            if (successfulSuggestions.length > 0) {
+                console.log('Using cached successful selector:', successfulSuggestions[0]);
+                return successfulSuggestions[0];
+            }
             
             // Get selectors from LLM
             const messages = this._getMessages(selector, content);
             const llm_selector = this._llm(messages);
 
-            if (!llm_selector) {
+            if (!llm_selector || llm_selector === 'NULL') {
                 console.error('No selector generated');
                 return null;
             }
@@ -202,12 +340,17 @@
                         selector: llm_selector,
                         element: element
                     });
+                    this._recordSuccessfulSuggestion(content, selector, llm_selector);
                     return element;
                 }
                 console.log('No element found with selector:', llm_selector);
+                // Record the failed suggestion
+                this._recordFailedSuggestion(content, selector, llm_selector);
                 return null;
             } catch (e) {
                 console.error('Error with selector:', llm_selector, e);
+                // Record the failed suggestion
+                this._recordFailedSuggestion(content, selector, llm_selector);
                 return null;
             }
         } catch (e) {
@@ -224,10 +367,16 @@
                 
         try {            
             // Get the root content instead of entire DOM
-            // If root is the document, fetch the body element
-            // If root is an element, fetch the element itself
             const elem = root.documentElement ? root.documentElement.querySelector('body') : root;
             const content = this._cleanup(elem).getHTML();
+
+            // Check if we have any successful suggestions first
+            const successfulSuggestions = this._getSuccessfulSuggestions(content, selector);
+            if (successfulSuggestions.length > 0) {
+                console.log('Using cached successful selector:', successfulSuggestions[0]);
+                this._recordSuccessfulSuggestion(content, selector, successfulSuggestions[0]);
+                return successfulSuggestions[0];
+            }
             
             // Get selectors from LLM
             const messages = this._getMessages(selector, content);
@@ -243,10 +392,16 @@
                         count: found.length
                     });
                     found.forEach(el => elements.add(el));
+                } else {
+                    console.log('No elements found with selector:', llm_selector);
+                    // Record the failed suggestion
+                    this._recordFailedSuggestion(content, selector, llm_selector);
                 }
                 return Array.from(elements);
             } catch (e) {
                 console.error('Error with selector:', llm_selector, e);
+                // Record the failed suggestion
+                this._recordFailedSuggestion(content, selector, llm_selector);
                 return [];
             }
         } catch (e) {
