@@ -12,7 +12,7 @@ jobs:
     with:
       llm_model: claude-3-5-haiku-latest
       llm_base_url: https://api.anthropic.com/v1/
-      llm_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+      llm_api_key: "${{ secrets.ANTHROPIC_API_KEY }}"
     secrets: inherit
 
   test-node:
@@ -20,5 +20,5 @@ jobs:
     with:
       llm_model: claude-3-5-haiku-latest
       llm_base_url: https://api.anthropic.com/v1/
-      llm_api_key_name: ${{ secrets.ANTHROPIC_API_KEY }}
+      llm_api_key_name: "${{ secrets.ANTHROPIC_API_KEY }}"
     secrets: inherit 
