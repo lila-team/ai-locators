@@ -8,7 +8,7 @@ on:
 
 jobs:
   test-python:
-    uses: ./.github/workflows/test-base.yml
+    uses: ./.github/workflows/test-base-simple.yml
     with:
       llm_model: claude-3-5-sonnet-latest
       llm_base_url: https://api.anthropic.com/v1/
@@ -16,7 +16,7 @@ jobs:
     secrets: inherit
 
   test-node:
-    uses: ./.github/workflows/test-base.yml
+    uses: ./.github/workflows/test-base-node.yml
     with:
       llm_model: claude-3-5-sonnet-latest
       llm_base_url: https://api.anthropic.com/v1/

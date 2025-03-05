@@ -1,0 +1,46 @@
+# Base configuration for test workflows
+name: Base Test Configuration for Simple Cases
+
+# This is not a workflow file, just a configuration file
+on:
+  workflow_call:
+    inputs:
+      llm_model:
+        required: true
+        type: string
+      llm_base_url:
+        required: true
+        type: string
+      llm_api_key_name:
+        required: true
+        type: string
+
+jobs:
+  simple-cases:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        working-directory: python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Install Playwright
+        run: |
+          playwright install chromium
+
+      - name: Run Python tests
+        working-directory: python
+        env:
+          LLM_MODEL: ${{ inputs.llm_model }}
+          LLM_BASE_URL: ${{ inputs.llm_base_url }}
+          LLM_API_KEY: ${{ secrets[inputs.llm_api_key_name] }}
+        run: |
+          pytest -v tests/test_selectors.py
