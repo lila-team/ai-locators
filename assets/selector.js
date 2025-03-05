@@ -129,7 +129,7 @@
             </INPUT>`
         },{
             role: 'assistant',
-            content: 'The generated selector is: '
+            content: 'The generated selector is:'
         }];
     },
 
