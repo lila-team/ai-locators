@@ -4,7 +4,7 @@ By [<img src="assets/logo.png" height=30>](https://github.com/lila-team/lila)
 
 [![NPM Version](https://img.shields.io/npm/v/ai-locators?color=blue)](https://www.npmjs.com/package/ai-locators)
 [![PyPI - Version](https://img.shields.io/pypi/v/ai-locators?color=blue)](https://pypi.org/project/ai-locators/)
-[![CI](https://github.com/lila-team/ai-locators/actions/workflows/test.yml/badge.svg)](https://github.com/lila-team/ai-locators/actions/workflows/test.yml)[![Twitter](https://img.shields.io/twitter/follow/lila__dev?style=social)](https://twitter.com/lila__dev)
+[![Twitter](https://img.shields.io/twitter/follow/lila__dev?style=social)](https://twitter.com/lila__dev)
 [![Discord](https://img.shields.io/discord/1303067047931936809?label=Discord)](https://discord.gg/kZ7TEmxH)
 ![GitHub Repo stars](https://img.shields.io/github/stars/lila-team/ai-locators)
 
@@ -23,7 +23,7 @@ Why?
 * `ai-locators` do not require maintenance
 * native integration with Playwright
 
-## Supported Models and Test Badges
+## Supported Models
 
 | Model Name | Test Badge |
 |------------|------------|
@@ -35,6 +35,10 @@ Why?
 | Qwen Turbo | ![Qwen Turbo](https://github.com/lila-team/ai-locators/actions/workflows/test-qwen-turbo.yml/badge.svg) |
 | Google Gemini 2.0 Flash 001 | ![Google Gemini 2.0 Flash 001](https://github.com/lila-team/ai-locators/actions/workflows/test-gemini-flash.yml/badge.svg) |
 | Meta LLaMA 3.3 70B Instruct | ![Meta LLaMA 3.3 70B Instruct](https://github.com/lila-team/ai-locators/actions/workflows/test-llama-instruct.yml/badge.svg) |
+
+
+Any model with a compatible AI interface can be used with ai-locators, but the models listed above have been thoroughly tested and are known to work well with the package.
+
 
 ## Node.js Package
 
