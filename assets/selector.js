@@ -116,6 +116,9 @@
             <OUTPUT>
             You should output the selector or 'NULL' if no selector is found.
             Do not include any additional text, comments or instructions in the output.
+            Do not quote your response with backticks or any other characters.
+
+            Just output the selector string or 'NULL'.
             </OUTPUT>
             
             <INPUT>
@@ -126,7 +129,7 @@
             </INPUT>`
         },{
             role: 'assistant',
-            content: 'This is the generated selector (without any explaination or comments):'
+            content: 'The generated selector is: '
         }];
     },
 
