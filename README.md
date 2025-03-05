@@ -20,7 +20,7 @@ page.locator("ai=the login button in the header that says Sign In");
 
 Why?
 
-* `ai-locators` do not require maintanance
+* `ai-locators` do not require maintenance
 * native integration with Playwright
 
 ## Node.js Package
@@ -44,7 +44,7 @@ const model = "gpt-4o";
 (async () => {
   const browser = await chromium.launch({
     headless: false,
-    args: ["--disable-web-security"]
+    args: ["--disable-web-security"]  // Disable CORS to make LLM request. Use at own risk.
   });
   const page = await browser.newPage();
   
@@ -87,7 +87,7 @@ model = "gpt-4o"
 
 with sync_playwright() as p:
     # Need to disable web security for browser to make LLM requests work
-    browser = p.chromium.launch(headless=False, args=["--disable-web-security"])
+    browser = p.chromium.launch(headless=False, args=["--disable-web-security"])  # Disable CORS to make LLM request. Use at own risk.
     page = browser.new_page()
     
     # Register the AI selector
