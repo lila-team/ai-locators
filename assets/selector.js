@@ -12,6 +12,9 @@
     // Store successful suggestions per root+description combination
     _successfulSuggestions: {},
 
+    // Store invalid suggestions (syntactically incorrect) per root+description combination
+    _invalidSuggestions: {},
+
     _cleanup(root) {
         console.log("Filtering non-relevant elements");
         var ret = this._filterNonRelevantElements(root);
@@ -114,6 +117,15 @@
         this._successfulSuggestions[key].add(selector);
     },
 
+    // Helper function to record an invalid suggestion
+    _recordInvalidSuggestion(content, description, selector) {
+        const key = this._getKey(content, description);
+        if (!this._invalidSuggestions[key]) {
+            this._invalidSuggestions[key] = new Set();
+        }
+        this._invalidSuggestions[key].add(selector);
+    },
+
     // Helper function to get failed suggestions
     _getFailedSuggestions(content, description) {
         const key = this._getKey(content, description);
@@ -125,96 +137,49 @@
         return Array.from(this._successfulSuggestions[key] || []);
     },
 
+    // Helper function to get invalid suggestions
+    _getInvalidSuggestions(content, description) {
+        const key = this._getKey(content, description);
+        return Array.from(this._invalidSuggestions[key] || []);
+    },
+
     // Helper function to generate messages for the LLM
     _getMessages(description, content) {
         const failedSuggestions = this._getFailedSuggestions(content, description);
+        const invalidSuggestions = this._getInvalidSuggestions(content, description);
         
         const messages = [{
             role: 'user',
             content: `
-            You are an assistant that generates a single CSS selector based on an HTML and a description:
+            You will be given a description of an element and an HTML snippet. Your job
+            is to locate the element in the HTML snippet and generate a CSS selector for it.
 
-            The description could be about a specific element or a group of elements. For example:
-            * "The main heading of the page"  # This is a specific element
-            * "The login button"  # This is a specific element
-            * "The product images"  # This is a group of elements
-            * "The navigation links"  # This is a group of elements
+            <INSTRUCTIONS>
+            If the element has a unique attribute, return it. This could be:
+                * id. For example: '#username-input'
+                * data-* attribute. For example: '[data-qa="username-input"]'
+                * aria-* attribute. For example: '[aria-label="Username Input"]'
+                * role attribute. For example: '[role="textbox"]'
+                * placeholder attribute. For example: 'input[placeholder="Enter your username"]'
+                * name attribute. For example: 'input[name="username"]'
+                * class attribute. For example: '.username-input'
+            
+            If the element contains a unique text, return it. For example: 'button:contains("Submit")'
 
-            To generate the CSS selector, apply the following rules depending on the the description:
+            If the element does not contain any unique attributes, use a unique parent-child relationship to generate a selector
+            For example:
+                * #main-content form input[name="username"]
+                * .product-list li:nth-of-type(1)
+                * [role="main"] section h1:nth-of-type(1)
+            
+            If the element depends on a position, use nth-child or nth-of-type to make the selector more specific.
+            For example:
+                * .product-list li:nth-of-type(1)
+                * .product-list:nth-child(4)
 
-            * For input elements, follow these rules:
-                1) If the element has an id attribute, return it as the selector. This is the most specific selector.
-                   For example: '#username-input'
-                2) If not, look for a unique name attribute and return it.
-                   For example: 'input[name="username"]'
-                3) If not, check if the element has a unique placeholder attribute and return it.
-                   For example: 'input[placeholder="Enter your username"]'
-                4) If not, check if a unique data attribute, return it.
-                   For example: 'input[data-qa="username"]'
-                5) If not, check if a unique aria-* attribute, return it.
-                   For example: 'input[aria-label="Username"]'
-                6) If not, check if there is a unique class attribute and return it.
-                   For example: '.username-input'
-                7) If not, check if there is a unique role attribute and return it.
-                   For example: '[role="textbox"]'
-                8) Lastly fallback to the tag name and its parent's tag name to create a selector.
-                   Use nth-child or nth-of-type to make the selector more specific.
-                   For example: 'form input:nth-of-type(1)'
-                9) If you still cannot generate the selector, output 'NULL'.
+            If you cannot generate a selector, output 'NULL'.
 
-            * For interactive elements (such as buttons, links, etc), follow these rules:
-                1) If the element has an id attribute, return it as the selector. This is the most specific selector.
-                   For example: '#submit-button'
-                2) If the element has a unique data attribute, return it.
-                   For example: '[data-qa="submit-button"]'
-                3) If the element has a unique aria-* attribute, return it.
-                   For example: '[aria-label="Submit"]'
-                4) If the element class can be used to identify it, return it.
-                   For example: '.submit-button' or 'div .submit-button'
-                5) If the element has a unique role attribute, return it.
-                   For example: '[role="button"]'
-                6) If the element has a unique text content, return it.
-                   For example: 'button:contains("Submit")'
-                7) Lastly fallback to the tag name and its parent's tag name to create a selector.
-                   Use nth-child or nth-of-type to make the selector more specific.
-                   For example: 'form button:nth-of-type(1)'
-                8) If you still cannot generate the selector, output 'NULL'.
-
-            * For content elements (headings, paragraphs, etc), follow these rules:
-                1) If the element has an id attribute, return it as the selector. This is the most specific selector.
-                   For example: '#main-heading'
-                2) If the element has a unique data attribute, return it.
-                   For example: '[data-qa="main-heading"]'
-                3) If the element has a unique aria-* attribute, return it.
-                   For example: '[aria-label="Main Heading"]'
-                4) If the element has a unique class attribute, return it.
-                   For example: '.main-heading'
-                5) If the element has a unique role attribute, return it.
-                   For example: '[role="heading"]'
-                6) If the element has a unique text content, return it.
-                   For example: 'h1:contains("Main Heading")'
-                7) Lastly fallback to the tag name and its parent's tag name to create a selector.
-                   For example: 'section h1:nth-of-type(1)'
-                8) If you still cannot generate the selector, output 'NULL'.
-
-             * For descriptions that are meant to aggregate multiple elements, follow these rules:
-                1) If the elements have a unique class attribute, return it.
-                   For example: '.product-image'
-                2) If the elements have a unique data attribute, return it.
-                   For example: '[data-qa="product-image"]'
-                3) If the elements have a unique aria-* attribute, return it.
-                   For example: '[aria-label="Product Image"]'
-                4) If the elements have a unique role attribute, return it.
-                   For example: '[role="img"]'
-                5) Lastly fallback to the tag name of the elements and the parent's selector to create a selector.
-                   For example: '#product-list img'
-                6) If you still cannot generate the selector, output 'NULL'.
-
-            In any case:
-            * Do not invent new attributes or classes.
-            * If the selector is not unique, use nth-child or nth-of-type to make it more specific.
-            * Do not prepend tags or parent selectors to the selector if they are not necessary.
-                * If 'name' is unique, use 'input[name="username"]' instead of '.main form input[name="username"]'.
+            </INSTRUCTIONS>
 
             <OUTPUT>
             You should output the selector or 'NULL' if no selector is found.
@@ -235,7 +200,32 @@
             </INPUT>`
         }];
 
-        // Add failed suggestions as separate messages in the conversation
+        // Add invalid suggestions first as they represent syntax errors
+        if (invalidSuggestions.length > 0) {
+            messages.push({
+                role: 'assistant',
+                content: invalidSuggestions[0]
+            });
+            messages.push({
+                role: 'user',
+                content: 'This selector was not valid. Try a different one.'
+            });
+            
+            // Add remaining invalid suggestions as alternating assistant/user messages
+            for (let i = 1; i < invalidSuggestions.length; i++) {
+                messages.push({
+                    role: 'assistant',
+                    content: invalidSuggestions[i]
+                });
+                messages.push({
+                    role: 'user',
+                    content: 'This selector was also not valid. Try a different one.'
+                });
+            }
+            console.log('Invalid suggestions:', invalidSuggestions);
+        }
+
+        // Add failed suggestions after invalid ones
         if (failedSuggestions.length > 0) {
             messages.push({
                 role: 'assistant',
@@ -349,8 +339,8 @@
                 return null;
             } catch (e) {
                 console.error('Error with selector:', llm_selector, e);
-                // Record the failed suggestion
-                this._recordFailedSuggestion(content, selector, llm_selector);
+                // Record the invalid suggestion since it caused an error
+                this._recordInvalidSuggestion(content, selector, llm_selector);
                 return null;
             }
         } catch (e) {
@@ -400,8 +390,8 @@
                 return Array.from(elements);
             } catch (e) {
                 console.error('Error with selector:', llm_selector, e);
-                // Record the failed suggestion
-                this._recordFailedSuggestion(content, selector, llm_selector);
+                // Record the invalid suggestion since it caused an error
+                this._recordInvalidSuggestion(content, selector, llm_selector);
                 return [];
             }
         } catch (e) {
