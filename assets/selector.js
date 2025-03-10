@@ -293,10 +293,6 @@
             if (xhr.status === 200) {
                 const response = JSON.parse(xhr.responseText);
                 const llm_selector = response.choices[0].message.content.trim();
-                if (!llm_selector || llm_selector === 'NULL') {
-                    console.error('No selector generated:', response);
-                    return null;
-                }
                 console.log('Generated selector:', llm_selector);
                 return llm_selector;
             } else {
@@ -385,6 +381,11 @@
             // Get selectors from LLM
             const messages = this._getMessages(selector, content);
             const llm_selector = this._llm(messages);
+
+            if (!llm_selector || llm_selector === 'NULL') {
+                console.error('No selector generated');
+                return [];
+            }
             
             const elements = new Set();
             try {
