@@ -5,6 +5,15 @@
     LLM_API_URL: '<PLACEHOLDER>',
     LLM_MODEL: '<PLACEHOLDER>',
     LLM_API_KEY: '<PLACEHOLDER>',  // Will be replaced at runtime
+    
+    // Store failed suggestions per root+description combination
+    _failedSuggestions: {},
+
+    // Store successful suggestions per root+description combination
+    _successfulSuggestions: {},
+
+    // Store invalid suggestions (syntactically incorrect) per root+description combination
+    _invalidSuggestions: {},
 
     _cleanup(root) {
         console.log("Filtering non-relevant elements");
@@ -85,13 +94,65 @@
         return clonedRoot;
     },
 
+    // Helper function to get a unique key for root+description combination
+    _getKey(content, description) {
+        return `${content}:::${description}`;
+    },
+
+    // Helper function to record a failed suggestion
+    _recordFailedSuggestion(content, description, selector) {
+        const key = this._getKey(content, description);
+        if (!this._failedSuggestions[key]) {
+            this._failedSuggestions[key] = new Set();
+        }
+        this._failedSuggestions[key].add(selector);
+    },
+
+    // Helper function to record a successful suggestion
+    _recordSuccessfulSuggestion(content, description, selector) {
+        const key = this._getKey(content, description);
+        if (!this._successfulSuggestions[key]) {
+            this._successfulSuggestions[key] = new Set();
+        }
+        this._successfulSuggestions[key].add(selector);
+    },
+
+    // Helper function to record an invalid suggestion
+    _recordInvalidSuggestion(content, description, selector) {
+        const key = this._getKey(content, description);
+        if (!this._invalidSuggestions[key]) {
+            this._invalidSuggestions[key] = new Set();
+        }
+        this._invalidSuggestions[key].add(selector);
+    },
+
+    // Helper function to get failed suggestions
+    _getFailedSuggestions(content, description) {
+        const key = this._getKey(content, description);
+        return Array.from(this._failedSuggestions[key] || []);
+    },
+
+    _getSuccessfulSuggestions(content, description) {
+        const key = this._getKey(content, description);
+        return Array.from(this._successfulSuggestions[key] || []);
+    },
+
+    // Helper function to get invalid suggestions
+    _getInvalidSuggestions(content, description) {
+        const key = this._getKey(content, description);
+        return Array.from(this._invalidSuggestions[key] || []);
+    },
+
     // Helper function to generate messages for the LLM
     _getMessages(description, content) {
-        return [{
+        const failedSuggestions = this._getFailedSuggestions(content, description);
+        const invalidSuggestions = this._getInvalidSuggestions(content, description);
+        
+        const messages = [{
             role: 'user',
             content: `
-            You are a selector generation assistant. Given the webpage content and a high level description, you need to locate the
-            element or elements that match the description and generate a CSS selector.
+            You will be given a description of an element and an HTML snippet. Your job
+            is to locate the node or nodes that match the description and generate a CSS selector.
 
             The description could be about a specific element or a group of elements. For example:
             * "The main heading of the page"  # This is a specific element
@@ -100,15 +161,19 @@
             * "The navigation links"  # This is a group of elements
 
             Your instructions are to:
-            1) Locate the element or elements that match the description
-            2) Generate the most specific CSS selector for the element or elements.
+            * Locate the node or nodes in the HTML that match the description, then
+            * If you found the node or nodes, generate the most specific CSS selector for the element or elements.
+            * If you cannot locate the node or nodes, output 'NULL'.
 
+            <CSS_SELECTOR>
             For the CSS selector, follow these guidelines:
-            * Be specific. The selector should match only the element or elements that match the description.
+            * Be specific. The selector should match only the node or nodes that match the description.
             * Do not go higher in the DOM tree than necessary.
-            * Prioritize content elements over layout elements if possible.
+            * Prioritize content nodes over layout nodes if possible.
             * The selector MUST NOT use the following CSS selectors: :has, :has-text, :text, :visible, :is or any non native CSS selector.
-                * Instead, use nth-child, nth-of-type, first-child, last-child, etc. to locate elements by index
+            * Use nth-child, nth-of-type, first-child, last-child, etc. to locate elements by index
+            * Use :disabled, :checked, :enabled to locate nodes by state
+            </CSS_SELECTOR>
 
             The selector will be used to "query()" or "queryAll()" on the root element of the page to locate the element or elements,
             so make sure the selector is valid.
@@ -120,21 +185,97 @@
 
             Just output the selector string or 'NULL'.
             </OUTPUT>
+
+            <EXAMPLES>
+            These are all examples of valid selectors that could be generated:
+
+            * #main-content form input[name="username"]
+            * #unique-id
+            * .product-list li:nth-of-type(1)
+            * [role="main"] section h1:nth-of-type(1)
+            * .product-list li:nth-of-type(1) img
+            * input[placeholder="Enter your username"]
+            * button:contains("Submit")
+            * .product-list:nth-child(4)
+            * #main-form input[role="textbox"]
+            * [data-qa="username-input"]
+            * [aria-label="Username Input"]
+            * input[type="checkbox"]:disabled
+            * input[type="checkbox"]:checked
             
-            <INPUT>
-            Description: ${description}
+            </EXAMPLES>`
+        },
+        {
+            role: 'user',
+            content: `The description is: ${description}`
+        },
+        {
+            role: 'user',
+            content: `The HTML snippet is:\n<PAGE>\n${content}\n</PAGE>`
+        }];
+
+        // Add invalid suggestions first as they represent syntax errors
+        if (invalidSuggestions.length > 0) {
+            messages.push({
+                role: 'assistant',
+                content: invalidSuggestions[0]
+            });
+            messages.push({
+                role: 'user',
+                content: 'This selector was not valid. Try a different one.'
+            });
             
-            Page content:
-            ${content}
-            </INPUT>`
-        },{
+            // Add remaining invalid suggestions as alternating assistant/user messages
+            for (let i = 1; i < invalidSuggestions.length; i++) {
+                messages.push({
+                    role: 'assistant',
+                    content: invalidSuggestions[i]
+                });
+                messages.push({
+                    role: 'user',
+                    content: 'This selector was also not valid. Try a different one.'
+                });
+            }
+            console.log('Invalid suggestions:', invalidSuggestions);
+        }
+
+        // Add failed suggestions after invalid ones
+        if (failedSuggestions.length > 0) {
+            messages.push({
+                role: 'assistant',
+                content: failedSuggestions[0]
+            });
+            messages.push({
+                role: 'user',
+                content: 'That selector did not work. Please try a different approach.'
+            });
+            
+            // Add remaining failed suggestions as alternating assistant/user messages
+            for (let i = 1; i < failedSuggestions.length; i++) {
+                messages.push({
+                    role: 'assistant',
+                    content: failedSuggestions[i]
+                });
+                messages.push({
+                    role: 'user',
+                    content: 'That selector also did not work. Please try a different approach.'
+                });
+            }
+            console.log('Failed suggestions:', failedSuggestions);
+        }
+
+        // Add the final assistant message
+        messages.push({
             role: 'assistant',
             content: 'The generated selector is:'
-        }];
+        });
+
+        return messages;
     },
 
     // Helper function to make sync HTTP request to LLM
     _llm(messages) {
+        // Check if we have any successful suggestions first
         const xhr = new XMLHttpRequest();
         xhr.open('POST', this.LLM_API_URL, false);  // false makes it synchronous
         xhr.setRequestHeader('Content-Type', 'application/json');
@@ -152,10 +293,6 @@
             if (xhr.status === 200) {
                 const response = JSON.parse(xhr.responseText);
                 const llm_selector = response.choices[0].message.content.trim();
-                if (!llm_selector) {
-                    console.error('No selector generated:', response);
-                    return null;
-                }
                 console.log('Generated selector:', llm_selector);
                 return llm_selector;
             } else {
@@ -178,12 +315,19 @@
             // Get the root content instead of entire DOM
             const elem = root.documentElement ? root.documentElement.querySelector('body') : root;
             const content = this._cleanup(elem).getHTML();
+
+            // Check if we have any successful suggestions first
+            const successfulSuggestions = this._getSuccessfulSuggestions(content, selector);
+            if (successfulSuggestions.length > 0) {
+                console.log('Using cached successful selector:', successfulSuggestions[0]);
+                return successfulSuggestions[0];
+            }
             
             // Get selectors from LLM
             const messages = this._getMessages(selector, content);
             const llm_selector = this._llm(messages);
 
-            if (!llm_selector) {
+            if (!llm_selector || llm_selector === 'NULL') {
                 console.error('No selector generated');
                 return null;
             }
@@ -196,12 +340,17 @@
                         selector: llm_selector,
                         element: element
                     });
+                    this._recordSuccessfulSuggestion(content, selector, llm_selector);
                     return element;
                 }
                 console.log('No element found with selector:', llm_selector);
+                // Record the failed suggestion
+                this._recordFailedSuggestion(content, selector, llm_selector);
                 return null;
             } catch (e) {
                 console.error('Error with selector:', llm_selector, e);
+                // Record the invalid suggestion since it caused an error
+                this._recordInvalidSuggestion(content, selector, llm_selector);
                 return null;
             }
         } catch (e) {
@@ -218,14 +367,25 @@
                 
         try {            
             // Get the root content instead of entire DOM
-            // If root is the document, fetch the body element
-            // If root is an element, fetch the element itself
             const elem = root.documentElement ? root.documentElement.querySelector('body') : root;
             const content = this._cleanup(elem).getHTML();
+
+            // Check if we have any successful suggestions first
+            const successfulSuggestions = this._getSuccessfulSuggestions(content, selector);
+            if (successfulSuggestions.length > 0) {
+                console.log('Using cached successful selector:', successfulSuggestions[0]);
+                this._recordSuccessfulSuggestion(content, selector, successfulSuggestions[0]);
+                return successfulSuggestions[0];
+            }
             
             // Get selectors from LLM
             const messages = this._getMessages(selector, content);
             const llm_selector = this._llm(messages);
+
+            if (!llm_selector || llm_selector === 'NULL') {
+                console.error('No selector generated');
+                return [];
+            }
             
             const elements = new Set();
             try {
@@ -237,10 +397,16 @@
                         count: found.length
                     });
                     found.forEach(el => elements.add(el));
+                } else {
+                    console.log('No elements found with selector:', llm_selector);
+                    // Record the failed suggestion
+                    this._recordFailedSuggestion(content, selector, llm_selector);
                 }
                 return Array.from(elements);
             } catch (e) {
                 console.error('Error with selector:', llm_selector, e);
+                // Record the invalid suggestion since it caused an error
+                this._recordInvalidSuggestion(content, selector, llm_selector);
                 return [];
             }
         } catch (e) {
