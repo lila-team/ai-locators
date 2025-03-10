@@ -152,34 +152,30 @@
             role: 'user',
             content: `
             You will be given a description of an element and an HTML snippet. Your job
-            is to locate the element in the HTML snippet and generate a CSS selector for it.
+            is to locate the node or nodes that match the description and generate a CSS selector.
 
-            <INSTRUCTIONS>
-            If the element has a unique attribute, return it. This could be:
-                * id. For example: '#username-input'
-                * data-* attribute. For example: '[data-qa="username-input"]'
-                * aria-* attribute. For example: '[aria-label="Username Input"]'
-                * role attribute. For example: '[role="textbox"]'
-                * placeholder attribute. For example: 'input[placeholder="Enter your username"]'
-                * name attribute. For example: 'input[name="username"]'
-                * class attribute. For example: '.username-input'
-            
-            If the element contains a unique text, return it. For example: 'button:contains("Submit")'
+            The description could be about a specific element or a group of elements. For example:
+            * "The main heading of the page"  # This is a specific element
+            * "The login button"  # This is a specific element
+            * "The product images"  # This is a group of elements
+            * "The navigation links"  # This is a group of elements
 
-            If the element does not contain any unique attributes, use a unique parent-child relationship to generate a selector
-            For example:
-                * #main-content form input[name="username"]
-                * .product-list li:nth-of-type(1)
-                * [role="main"] section h1:nth-of-type(1)
-            
-            If the element depends on a position, use nth-child or nth-of-type to make the selector more specific.
-            For example:
-                * .product-list li:nth-of-type(1)
-                * .product-list:nth-child(4)
+            Your instructions are to:
+            * Locate the node or nodes in the HTML that match the description, then
+            * If you found the node or nodes, generate the most specific CSS selector for the element or elements.
+            * If you cannot locate the node or nodes, output 'NULL'.
 
-            If you cannot generate a selector, output 'NULL'.
+            <CSS_SELECTOR>
+            For the CSS selector, follow these guidelines:
+            * Be specific. The selector should match only the node or nodes that match the description.
+            * Do not go higher in the DOM tree than necessary.
+            * Prioritize content nodes over layout nodes if possible.
+            * The selector MUST NOT use the following CSS selectors: :has, :has-text, :text, :visible, :is or any non native CSS selector.
+            * Use nth-child, nth-of-type, first-child, last-child, etc. to locate elements by index
+            </CSS_SELECTOR>
 
-            </INSTRUCTIONS>
+            The selector will be used to "query()" or "queryAll()" on the root element of the page to locate the element or elements,
+            so make sure the selector is valid.
 
             <OUTPUT>
             You should output the selector or 'NULL' if no selector is found.
@@ -188,16 +184,30 @@
 
             Just output the selector string or 'NULL'.
             </OUTPUT>
-            
-            <INPUT>
-            Description: ${description}
-            
-            Page content:
-            <PAGE>
-            ${content}
-            </PAGE>
 
-            </INPUT>`
+            <EXAMPLES>
+            These are all examples of valid selectors that could be generated:
+
+            * #main-content form input[name="username"]
+            * #unique-id
+            * .product-list li:nth-of-type(1)
+            * [role="main"] section h1:nth-of-type(1)
+            * .product-list li:nth-of-type(1) img
+            * input[placeholder="Enter your username"]
+            * button:contains("Submit")
+            * .product-list:nth-child(4)
+            * #main-form input[role="textbox"]
+            * [data-qa="username-input"]
+            * [aria-label="Username Input"]
+            </EXAMPLES>`
+        },
+        {
+            role: 'user',
+            content: `The description is: ${description}`
+        },
+        {
+            role: 'user',
+            content: `The HTML snippet is:\n<PAGE>\n${content}\n</PAGE>`
         }];
 
         // Add invalid suggestions first as they represent syntax errors
