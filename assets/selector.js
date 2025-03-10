@@ -172,6 +172,7 @@
             * Prioritize content nodes over layout nodes if possible.
             * The selector MUST NOT use the following CSS selectors: :has, :has-text, :text, :visible, :is or any non native CSS selector.
             * Use nth-child, nth-of-type, first-child, last-child, etc. to locate elements by index
+            * Use :disabled, :checked, :enabled to locate nodes by state
             </CSS_SELECTOR>
 
             The selector will be used to "query()" or "queryAll()" on the root element of the page to locate the element or elements,
@@ -199,6 +200,9 @@
             * #main-form input[role="textbox"]
             * [data-qa="username-input"]
             * [aria-label="Username Input"]
+            * input[type="checkbox"]:disabled
+            * input[type="checkbox"]:checked
+            
             </EXAMPLES>`
         },
         {
