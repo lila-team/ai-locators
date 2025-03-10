@@ -354,8 +354,8 @@ def test_state_based_selection(page):
         </form>
     """
     page.set_content(apply_styles(content))
-    credit_card_input = page.locator("ai=the disabled credit card input field")
-    paypal_input = page.locator("ai=the enabled PayPal email input")
+    credit_card_input = page.locator("ai=the disabled credit card number input field")
+    paypal_input = page.locator("ai=the enabled PayPal email input field")
     
     assert credit_card_input.is_disabled()
     assert not paypal_input.is_disabled()
