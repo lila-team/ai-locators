@@ -283,7 +283,8 @@
         
         const data = {
             model: this.LLM_MODEL,
-            max_tokens: 50,
+            max_tokens: 100,
+            temperature: 1.5,
             messages,
             stream: false
         };
